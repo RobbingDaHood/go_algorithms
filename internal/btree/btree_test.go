@@ -20,6 +20,7 @@ func TestSearch(t *testing.T) {
 		{"MixedTypes", []interface{}{1, "2", true}, 3, nil, 1, "", ""},
 		{"DoNotInsertIfComparatorDoesNotMatch", []interface{}{1, "1", 2, true}, 2, ComparatorExpectingInts, 2, "", "value not comparable with given comparator"},
 		{"DoNotSearchIfComparatorDoesNotMatch", []interface{}{1, 2}, 2, ComparatorExpectingInts, "2", "value not comparable with given comparator", ""},
+		{"ElementsOutOfOrder", []interface{}{3, 2, 1}, 3, nil, 1, "", ""},
 		{"InsertMoreThanDefaultMaxSizeAndThenSearch", get1To1000(), 1000, ComparatorExpectingInts, 333, "", ""},
 	}
 
@@ -99,6 +100,7 @@ func BenchmarkSearch10_000(b *testing.B) {
 	}
 
 	b.ResetTimer()
+	b.ReportAllocs()
 	for i := 0; i < b.N; i++ {
 		_, err := tree.Search(i)
 		if err != nil {
@@ -117,6 +119,7 @@ func BenchmarkSearch(b *testing.B) {
 	}
 
 	b.ResetTimer()
+	b.ReportAllocs()
 	for i := 0; i < b.N; i++ {
 		_, err := tree.Search(i)
 		if err != nil {
