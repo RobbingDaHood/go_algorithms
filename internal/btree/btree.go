@@ -1,62 +1,36 @@
 package btree
 
 import (
-	"errors"
 	"fmt"
 )
 
+type Root struct {
+	node
+	comparator  func(first, second interface{}) ComparatorStatus
+	nodeMaxSize int
+	nodeCount   int
+}
+
 func CreateTreeDefaultValues() Root {
 	return Root{
-		node:       node{},
-		comparator: ComparatorEverythingAsString,
+		node: node{
+			isLeaf: true,
+		},
+		comparator:  ComparatorEverythingAsString,
+		nodeMaxSize: 10000,
 	}
 }
 
-func (n *Root) Insert(value interface{}) (int, error) {
-	index, status := getIndex(value, n)
-	switch status {
-	case FoundIndexToInsert:
-		n.values = append(append(n.values[index:], value), n.values[:index]...)
-		return index, nil
-	case FoundMatch:
-		return -1, errors.New("value already exists in tree")
-	case ValueNotComparable:
-		return -1, errors.New("value not comparable with given comparator")
-	default:
-		return -1, errors.New("unexpected status from getIndex: " + fmt.Sprint(status))
+func (n *Root) Insert(value interface{}) error {
+	_, err := n.node.Insert(value, n.comparator, n.nodeMaxSize)
+	if err == nil {
+		n.nodeCount++
 	}
-}
-
-type GetIndexStatus int
-
-const (
-	FoundMatch GetIndexStatus = iota
-	FoundIndexToInsert
-	ValueNotComparable
-)
-
-func getIndex(value interface{}, n *Root) (int, GetIndexStatus) {
-	var index int
-	for i, v := range n.values {
-		comparatorResult := n.comparator(value, v)
-		if comparatorResult == Equal {
-			return i, FoundMatch
-		} else if comparatorResult == ArgumentsNotComparable {
-			return -1, ValueNotComparable
-		}
-		index = i
-	}
-	return index, FoundIndexToInsert
+	return err
 }
 
 func (n *Root) Search(value interface{}) (interface{}, error) {
-	index, status := getIndex(value, n)
-	if status == FoundMatch {
-		return n.values[index], nil
-	} else if status == ValueNotComparable {
-		return nil, errors.New("value not comparable with given comparator")
-	}
-	return nil, errors.New("did not find the value")
+	return n.node.Search(value, n.comparator)
 }
 
 func ComparatorEverythingAsString(first, second interface{}) ComparatorStatus {
