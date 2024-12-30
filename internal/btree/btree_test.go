@@ -1,6 +1,7 @@
 package btree
 
 import (
+	"github.com/google/btree"
 	"testing"
 )
 
@@ -25,7 +26,7 @@ func TestSearch(t *testing.T) {
 	}
 
 	// TODO closest match
-	// TODO visitor pattern
+	// TODO visitor pattern ALSO to make sure that the tree is built correctly
 	// TODO sum
 
 	for _, tt := range tests {
@@ -63,9 +64,9 @@ func TestSearch(t *testing.T) {
 	}
 }
 
-func BenchmarkInsert10_000(b *testing.B) {
-	b.N = 10_000
+func BenchmarkInsert(b *testing.B) {
 	tree := CreateTreeDefaultValues()
+	tree.comparator = ComparatorExpectingInts
 	b.ResetTimer()
 	b.ReportAllocs()
 	for i := 0; i < b.N; i++ {
@@ -76,36 +77,12 @@ func BenchmarkInsert10_000(b *testing.B) {
 	}
 }
 
-func BenchmarkInsert100_000(b *testing.B) {
-	b.N = 100_000
-	tree := CreateTreeDefaultValues()
+func BenchmarkInsertGoogle(b *testing.B) {
+	tree := btree.New(10000)
 	b.ResetTimer()
 	b.ReportAllocs()
 	for i := 0; i < b.N; i++ {
-		err := tree.Insert(i)
-		if err != nil {
-			b.Fatalf("Insert() returned error: %v", err)
-		}
-	}
-}
-
-func BenchmarkSearch10_000(b *testing.B) {
-	b.N = 10_000
-	tree := CreateTreeDefaultValues()
-	for i := 0; i < b.N; i++ {
-		err := tree.Insert(i)
-		if err != nil {
-			b.Fatalf("Insert() returned error: %v", err)
-		}
-	}
-
-	b.ResetTimer()
-	b.ReportAllocs()
-	for i := 0; i < b.N; i++ {
-		_, err := tree.Search(i)
-		if err != nil {
-			b.Fatalf("Search() returned error: %v", err)
-		}
+		tree.ReplaceOrInsert(btree.Int(i))
 	}
 }
 
@@ -125,6 +102,45 @@ func BenchmarkSearch(b *testing.B) {
 		if err != nil {
 			b.Fatalf("Search() returned error: %v", err)
 		}
+	}
+}
+
+func BenchmarkSearchGoogle(b *testing.B) {
+	tree := btree.New(10000)
+	for i := 0; i < b.N; i++ {
+		tree.ReplaceOrInsert(btree.Int(i))
+	}
+	b.ResetTimer()
+	b.ReportAllocs()
+	for i := 0; i < b.N; i++ {
+		item := tree.Get(btree.Int(i))
+		if item == nil {
+			b.Fatalf("Search() returned nil")
+		}
+	}
+}
+
+func BenchmarkSearchGoogleGeneric(b *testing.B) {
+	tree := btree.NewG[int](10_000, func(a, b int) bool {
+		return a < b
+	})
+	for i := 0; i < b.N; i++ {
+		tree.ReplaceOrInsert(i)
+	}
+	b.ResetTimer()
+	b.ReportAllocs()
+	for i := 0; i < b.N; i++ {
+		_, found := tree.Get(i)
+		if !found {
+			b.Fatalf("Search() returned nil")
+		}
+	}
+}
+
+func BenchmarkIntCompare(b *testing.B) {
+	b.ReportAllocs()
+	for i := 0; i < b.N; i++ {
+		ComparatorExpectingInts(1, 2)
 	}
 }
 
@@ -148,6 +164,10 @@ func ComparatorExpectingInts(first, second interface{}) ComparatorStatus {
 		return SecondArgumentBigger
 	}
 	return Equal
+}
+
+func CompareSecondArgumentAlwaysBigger(first, second interface{}) ComparatorStatus {
+	return SecondArgumentBigger
 }
 
 func get1To1000() []interface{} {
