@@ -22,7 +22,7 @@ func CreateTreeDefaultValues() Root {
 }
 
 func (n *Root) Insert(value interface{}) error {
-	_, err := n.node.Insert(value, n.comparator, n.nodeMaxSize)
+	err := n.node.insert(value, n.comparator, n.nodeMaxSize, -1)
 	if err == nil {
 		n.nodeCount++
 	}

@@ -5,64 +5,47 @@ import (
 	"fmt"
 )
 
-func (n *node) Insert(value interface{}, comparator func(first, second interface{}) ComparatorStatus, nodeMaxSize int) (bool, error) {
+func (n *node) insert(value interface{}, comparator func(first, second interface{}) ComparatorStatus, nodeMaxSize int, indexFromParent int) error {
 	index, status := n.getIndex(value, comparator)
 	switch status {
 	case NoElementsInList:
 		n.values = append(n.values, value)
-		return false, nil
+		return nil
 	case ElementAfterIndexIsBigger:
 		if n.isLeaf {
 			n.insertElementBeforeIndex(value, index)
-		} else {
-			nodeToInsertInCasted := n.values[index].(nodeReference)
-			shouldSplitNode, err := nodeToInsertInCasted.node.Insert(value, comparator, nodeMaxSize)
-			if err != nil {
-				return false, err
-			}
-			if shouldSplitNode {
-				n.splitChildNode(nodeToInsertInCasted, index)
-			}
 		}
-
-		if len(n.values) > nodeMaxSize {
-			if n.parent == nil {
-				n.splitWithoutParent()
-			} else {
-				return true, nil
-			}
-		}
-
-		return false, nil
 	case NoElementMatchedOrWereBigger:
 		if n.isLeaf {
 			n.values = append(n.values, value)
-		} else {
-			nodeToInsertInCasted := n.values[index].(nodeReference)
-			shouldSplitNode, err := nodeToInsertInCasted.node.Insert(value, comparator, nodeMaxSize)
-			if err != nil {
-				return false, err
-			}
-			if shouldSplitNode {
-				n.splitChildNode(nodeToInsertInCasted, index)
-			}
 		}
-
-		if len(n.values) > nodeMaxSize {
-			if n.parent == nil {
-				n.splitWithoutParent()
-			} else {
-				return true, nil
-			}
-		}
-
-		return false, nil
 	case FoundMatch:
-		return false, errors.New("value already exists in tree")
+		return errors.New("value already exists in tree")
 	case ValueNotComparable:
-		return false, errors.New("value not comparable with given comparator")
+		return errors.New("value not comparable with given comparator")
 	default:
-		return false, errors.New("unexpected status from getIndex: " + fmt.Sprint(status))
+		return errors.New("unexpected status from getIndex: " + fmt.Sprint(status))
+	}
+
+	if !n.isLeaf {
+		nodeToInsertInCasted := n.values[index].(nodeReference)
+		err := nodeToInsertInCasted.node.insert(value, comparator, nodeMaxSize, index)
+		if err != nil {
+			return err
+		}
+	}
+
+	n.handlePossibleSplit(nodeMaxSize, indexFromParent)
+	return nil
+}
+
+func (n *node) handlePossibleSplit(nodeMaxSize int, indexFromParent int) {
+	if len(n.values) > nodeMaxSize {
+		if n.parent == nil {
+			n.splitWithoutParent()
+		} else {
+			n.parent.splitChildNode(n.parent.values[indexFromParent].(nodeReference), indexFromParent)
+		}
 	}
 }
 
@@ -71,9 +54,9 @@ func (n *node) splitChildNode(nodeToInsertInCasted nodeReference, index int) {
 	halfWayIndex := len(valuesFromNode) / 2
 
 	smallerValues := valuesFromNode[:halfWayIndex]
-	smallerValuesMaxValue := smallerValues[len(smallerValues)-1]
+	smallerValuesMaxValue := getMaxValue(smallerValues)
 	biggerValues := valuesFromNode[halfWayIndex:]
-	biggerValueMaxValue := biggerValues[len(biggerValues)-1]
+	biggerValueMaxValue := getMaxValue(biggerValues)
 
 	nodeToInsertInCasted.node.values = biggerValues
 	nodeToInsertInCasted.maxValue = biggerValueMaxValue
@@ -90,13 +73,24 @@ func (n *node) splitChildNode(nodeToInsertInCasted nodeReference, index int) {
 	n.insertElementBeforeIndex(biggerNodeReference, index)
 }
 
+func getMaxValue(biggerValues []interface{}) interface{} {
+	biggerValue := biggerValues[len(biggerValues)-1]
+	switch biggerValue.(type) {
+	case nodeReference:
+		getMaxValue(biggerValue.(nodeReference).node.values)
+	default:
+		return biggerValue
+	}
+	panic("unexpected type in values")
+}
+
 func (n *node) splitWithoutParent() {
 	halfWayIndex := len(n.values) / 2
 
 	smallerValues := n.values[:halfWayIndex]
-	smallerValuesMaxValue := smallerValues[len(smallerValues)-1]
+	smallerValuesMaxValue := getMaxValue(smallerValues)
 	biggerValues := n.values[halfWayIndex:]
-	biggerValueMaxValue := biggerValues[len(biggerValues)-1]
+	biggerValueMaxValue := getMaxValue(biggerValues)
 
 	n.values = []interface{}{
 		nodeReference{
