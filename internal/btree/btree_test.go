@@ -31,7 +31,7 @@ func TestSearch(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			tree := CreateTreeDefaultValues()
+			tree := CreateTreeDefaultValues[interface{}]()
 			tree.nodeMaxSize = 100
 			if len(tree.values) != 0 {
 				t.Errorf("CreateTreeDefaultValues() returned tree with values")
@@ -65,7 +65,7 @@ func TestSearch(t *testing.T) {
 }
 
 func BenchmarkInsert(b *testing.B) {
-	tree := CreateTreeDefaultValues()
+	tree := CreateTreeDefaultValues[interface{}]()
 	tree.comparator = ComparatorExpectingInts
 	b.ResetTimer()
 	b.ReportAllocs()
@@ -87,7 +87,34 @@ func BenchmarkInsertGoogle(b *testing.B) {
 }
 
 func BenchmarkSearch(b *testing.B) {
-	tree := CreateTreeDefaultValues()
+	tree := CreateTreeDefaultValues[interface{}]()
+	for i := 0; i < b.N; i++ {
+		err := tree.Insert(i)
+		if err != nil {
+			b.Fatalf("Insert() returned error: %v", err)
+		}
+	}
+
+	b.ResetTimer()
+	b.ReportAllocs()
+	for i := 0; i < b.N; i++ {
+		_, err := tree.Search(i)
+		if err != nil {
+			b.Fatalf("Search() returned error: %v", err)
+		}
+	}
+}
+
+func BenchmarkSearchInteger(b *testing.B) {
+	tree := CreateTreeDefaultValues[int]()
+	tree.comparator = func(first, second int) ComparatorStatus {
+		if first > second {
+			return FirstArgumentBigger
+		} else if first < second {
+			return SecondArgumentBigger
+		}
+		return Equal
+	}
 	for i := 0; i < b.N; i++ {
 		err := tree.Insert(i)
 		if err != nil {
@@ -164,10 +191,6 @@ func ComparatorExpectingInts(first, second interface{}) ComparatorStatus {
 		return SecondArgumentBigger
 	}
 	return Equal
-}
-
-func CompareSecondArgumentAlwaysBigger(first, second interface{}) ComparatorStatus {
-	return SecondArgumentBigger
 }
 
 func get1To1000() []interface{} {

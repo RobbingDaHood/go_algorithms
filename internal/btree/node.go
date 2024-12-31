@@ -1,14 +1,14 @@
 package btree
 
-type node struct {
-	values []interface{}
-	parent *node
-	isLeaf bool // TODO consider working away from this field
+type innerNode[T any] struct {
+	values []nodeReference[T]
+	parent *innerNode[T]
+	isLeaf bool //TODO see if I can work out of this one
 }
 
-type nodeReference struct {
-	maxValue interface{}
-	node     *node
+type nodeReference[T any] struct {
+	maxValue T
+	node     *innerNode[T]
 }
 
 type ComparatorStatus int
@@ -30,19 +30,13 @@ const (
 	NoElementsInList
 )
 
-func (n *node) getIndex(value interface{}, comparator func(first, second interface{}) ComparatorStatus) (int, GetIndexStatus) {
+func (n *innerNode[T]) getIndex(value T, comparator func(first, second T) ComparatorStatus) (int, GetIndexStatus) {
 	if len(n.values) == 0 {
 		return -1, NoElementsInList
 	}
 	var index int
 	for i, v := range n.values {
-		var comparatorResult ComparatorStatus
-		switch v.(type) {
-		case nodeReference:
-			comparatorResult = comparator(value, v.(nodeReference).maxValue)
-		default:
-			comparatorResult = comparator(value, v)
-		}
+		var comparatorResult = comparator(value, v.maxValue)
 		if comparatorResult == Equal {
 			return i, FoundMatch
 		} else if comparatorResult == SecondArgumentBigger {

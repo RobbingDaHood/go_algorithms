@@ -4,36 +4,36 @@ import (
 	"fmt"
 )
 
-type Root struct {
-	node
-	comparator  func(first, second interface{}) ComparatorStatus
+type Root[T any] struct {
+	innerNode[T]
+	comparator  func(first, second T) ComparatorStatus
 	nodeMaxSize int
 	nodeCount   int
 }
 
-func CreateTreeDefaultValues() Root {
-	return Root{
-		node: node{
+func CreateTreeDefaultValues[T any]() Root[T] {
+	return Root[T]{
+		innerNode: innerNode[T]{
 			isLeaf: true,
 		},
-		comparator:  ComparatorEverythingAsString,
+		comparator:  ComparatorEverythingAsString[T],
 		nodeMaxSize: 10000,
 	}
 }
 
-func (n *Root) Insert(value interface{}) error {
-	err := n.node.insert(value, n.comparator, n.nodeMaxSize, -1)
+func (n *Root[T]) Insert(value T) error {
+	err := n.innerNode.insert(value, n.comparator, n.nodeMaxSize, -1)
 	if err == nil {
 		n.nodeCount++
 	}
 	return err
 }
 
-func (n *Root) Search(value interface{}) (interface{}, error) {
-	return n.node.Search(value, n.comparator)
+func (n *Root[T]) Search(value T) (T, error) {
+	return n.innerNode.Search(value, n.comparator)
 }
 
-func ComparatorEverythingAsString(first, second interface{}) ComparatorStatus {
+func ComparatorEverythingAsString[T any](first, second T) ComparatorStatus {
 	firstAsString := fmt.Sprint(first)
 	secondAsString := fmt.Sprint(second)
 	if firstAsString > secondAsString {
