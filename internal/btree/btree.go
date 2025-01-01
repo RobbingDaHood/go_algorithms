@@ -12,14 +12,12 @@ type Root[T any] struct {
 }
 
 func CreateTreeDefaultValues[T any]() Root[T] {
-	defaultMaxSize := 10000
 	return Root[T]{
 		innerNode: innerNode[T]{
-			//values: make([]nodeReference[T], 0, defaultMaxSize+1),
 			isLeaf: true,
 		},
 		comparator:  ComparatorEverythingAsString[T],
-		nodeMaxSize: defaultMaxSize,
+		nodeMaxSize: 10_000,
 	}
 }
 

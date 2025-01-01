@@ -13,36 +13,29 @@ func (n *innerNode[T]) insert(value T, comparator func(first, second T) Comparat
 		return nil
 	case ElementAtIndexIsBigger:
 		if n.isLeaf {
-			n.insertNodeReferenceBeforeIndex(nodeReference[T]{maxValue: value}, index)
+			n.values = slices.Insert(n.values, index, nodeReference[T]{maxValue: value})
+		} else {
+			relevantChildNode := &n.values[index]
+			err := relevantChildNode.node.insert(value, comparator, nodeMaxSize, index)
+			if err != nil {
+				return err
+			}
 		}
 	case NoElementMatchedOrWereBigger:
 		if n.isLeaf {
 			n.values = append(n.values, nodeReference[T]{maxValue: value})
+		} else {
+			relevantChildNode := &n.values[index]
+			relevantChildNode.maxValue = value
+			err := relevantChildNode.node.insert(value, comparator, nodeMaxSize, index)
+			if err != nil {
+				return err
+			}
 		}
 	case FoundMatch:
 		return errors.New("value already exists in tree")
 	case ValueNotComparable:
 		return errors.New("value not comparable with given comparator")
-	}
-
-	if !n.isLeaf {
-		relevantChildNode := &n.values[index]
-		switch status {
-		case NoElementMatchedOrWereBigger:
-			relevantChildNode.maxValue = value
-		case ElementAtIndexIsBigger:
-			// Do nothing
-		case FoundMatch:
-			// Do nothing
-		case ValueNotComparable:
-			// Do nothing
-		case NoElementsInList:
-			// Do nothing
-		}
-		err := relevantChildNode.node.insert(value, comparator, nodeMaxSize, index)
-		if err != nil {
-			return err
-		}
 	}
 
 	n.handlePossibleSplit(nodeMaxSize, indexFromParent)
@@ -60,17 +53,7 @@ func (n *innerNode[T]) handlePossibleSplit(nodeMaxSize int, indexFromParent int)
 }
 
 func (n *innerNode[T]) splitChildNode(nodeToSplit *nodeReference[T], index int) {
-	valuesFromNode := nodeToSplit.node.values
-	halfWayIndex := len(valuesFromNode) / 2
-
-	tmpSmallerValues := valuesFromNode[:halfWayIndex]
-	smallerValues := make([]nodeReference[T], len(tmpSmallerValues))
-	copy(smallerValues, tmpSmallerValues)
-	smallerValuesMaxValue := getMaxValue(smallerValues)
-	tmpBiggerValues := valuesFromNode[halfWayIndex:]
-	biggerValues := make([]nodeReference[T], len(tmpBiggerValues))
-	copy(biggerValues, tmpBiggerValues)
-	biggerValueMaxValue := getMaxValue(biggerValues)
+	smallerValues, smallerValuesMaxValue, biggerValues, biggerValueMaxValue := nodeToSplit.node.splitIntoTwo()
 
 	nodeToSplit.node.values = biggerValues
 	nodeToSplit.maxValue = biggerValueMaxValue
@@ -84,7 +67,7 @@ func (n *innerNode[T]) splitChildNode(nodeToSplit *nodeReference[T], index int) 
 		},
 	}
 
-	n.insertNodeReferenceBeforeIndex(smallerNodeReference, index)
+	n.values = slices.Insert(n.values, index, smallerNodeReference)
 }
 
 func getMaxValue[T any](biggerValues []nodeReference[T]) T {
@@ -92,16 +75,7 @@ func getMaxValue[T any](biggerValues []nodeReference[T]) T {
 }
 
 func (n *innerNode[T]) splitWithoutParent() {
-	halfWayIndex := len(n.values) / 2
-
-	tmpSmallerValues := n.values[:halfWayIndex]
-	smallerValues := make([]nodeReference[T], len(tmpSmallerValues))
-	copy(smallerValues, tmpSmallerValues)
-	smallerValuesMaxValue := getMaxValue(smallerValues)
-	tmpBiggerValues := n.values[halfWayIndex:]
-	biggerValues := make([]nodeReference[T], len(tmpBiggerValues))
-	copy(biggerValues, tmpBiggerValues)
-	biggerValueMaxValue := getMaxValue(biggerValues)
+	smallerValues, smallerValuesMaxValue, biggerValues, biggerValueMaxValue := n.splitIntoTwo()
 
 	n.values = []nodeReference[T]{
 		{
@@ -124,16 +98,17 @@ func (n *innerNode[T]) splitWithoutParent() {
 	n.isLeaf = false
 }
 
-func (n *innerNode[T]) insertNodeReferenceBeforeIndex(value nodeReference[T], index int) {
-	// TODO enable this after checking performamnce, need to check for cap or else we get runtime errors
-	//n.values = append(n.values, 0)
-	//copy(n.values[index+1:], n.values[index:])
-	//n.values[index] = value
-	n.values = slices.Insert(n.values, index, value)
-	//smaller := n.values[:index]
-	//bigger := n.values[index:]
-	//valueSlice := []nodeReference[T]{value}
-	//n.values = append(n.values, nodeReference[T]{})
-	//result := append(smaller, append(valueSlice, bigger...)...)
-	//n.values = result
+func (n *innerNode[T]) splitIntoTwo() ([]nodeReference[T], T, []nodeReference[T], T) {
+	halfWayIndex := len(n.values) / 2
+
+	smallerValues, smallerValuesMaxValue := n.copySlice(n.values[:halfWayIndex])
+	biggerValues, biggerValueMaxValue := n.copySlice(n.values[halfWayIndex:])
+	return smallerValues, smallerValuesMaxValue, biggerValues, biggerValueMaxValue
+}
+
+func (n *innerNode[T]) copySlice(subSetSlice []nodeReference[T]) ([]nodeReference[T], T) {
+	subsetCopy := make([]nodeReference[T], len(subSetSlice))
+	copy(subsetCopy, subSetSlice)
+	smallerValuesMaxValue := getMaxValue(subsetCopy)
+	return subsetCopy, smallerValuesMaxValue
 }

@@ -34,12 +34,12 @@ func (n *innerNode[T]) getIndex(value T, comparator func(first, second T) Compar
 	if n.values == nil || len(n.values) == 0 {
 		return -1, NoElementsInList
 	}
-	return Search(len(n.values), func(i int) ComparatorStatus {
+	return search(len(n.values), func(i int) ComparatorStatus {
 		return comparator(value, n.values[i].maxValue)
 	})
 }
 
-func Search(n int, f func(int) ComparatorStatus) (int, GetIndexStatus) {
+func search(n int, f func(int) ComparatorStatus) (int, GetIndexStatus) {
 	i, j := 0, n
 	var didFindBigger = false
 	for i < j {

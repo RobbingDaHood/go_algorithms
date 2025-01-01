@@ -251,6 +251,59 @@ func BenchmarkSearchGoogleGeneric(b *testing.B) {
 	}
 }
 
+func BenchmarkDifferentNodeSizes(b *testing.B) {
+	sizes := []int{100, 1_000, 10_000, 100_000}
+
+	for _, size := range sizes {
+		b.Run(fmt.Sprintf("Size%d", size), func(b *testing.B) {
+			data := generateRandomDataInt(b.N)
+			b.ResetTimer()
+			b.ReportAllocs()
+			tree := CreateTreeDefaultValues[int]()
+			tree.comparator = isLesserInteger
+			tree.nodeMaxSize = size
+			for i := range data {
+				err := tree.Insert(i)
+				if err != nil {
+					b.Fatalf("Insert() returned error: %v", err)
+				}
+			}
+			for i := range data {
+				_, err := tree.Search(i)
+				if err != nil {
+					b.Fatalf("Search() returned error: %v", err)
+				}
+			}
+		})
+	}
+}
+
+func BenchmarkDifferentInputSizes(b *testing.B) {
+	sizes := []int{1_000, 10_000, 100_000, 1_000_000}
+
+	for _, size := range sizes {
+		b.Run(fmt.Sprintf("Size%d", size), func(b *testing.B) {
+			data := generateRandomDataInt(size)
+			b.ResetTimer()
+			b.ReportAllocs()
+			tree := CreateTreeDefaultValues[int]()
+			tree.comparator = isLesserInteger
+			for i := range data {
+				err := tree.Insert(i)
+				if err != nil {
+					b.Fatalf("Insert() returned error: %v", err)
+				}
+			}
+			for i := range data {
+				_, err := tree.Search(i)
+				if err != nil {
+					b.Fatalf("Search() returned error: %v", err)
+				}
+			}
+		})
+	}
+}
+
 func BenchmarkIntCompare(b *testing.B) {
 	b.ReportAllocs()
 	for i := 0; i < b.N; i++ {
