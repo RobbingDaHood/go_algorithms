@@ -2,6 +2,7 @@ package btree
 
 import (
 	"errors"
+	"slices"
 )
 
 func (n *innerNode[T]) insert(value T, comparator func(first, second T) ComparatorStatus, nodeMaxSize int, indexFromParent int) error {
@@ -10,7 +11,7 @@ func (n *innerNode[T]) insert(value T, comparator func(first, second T) Comparat
 	case NoElementsInList:
 		n.values = append(n.values, nodeReference[T]{maxValue: value})
 		return nil
-	case ElementAfterIndexIsBigger:
+	case ElementAtIndexIsBigger:
 		if n.isLeaf {
 			n.insertNodeReferenceBeforeIndex(nodeReference[T]{maxValue: value}, index)
 		}
@@ -29,7 +30,7 @@ func (n *innerNode[T]) insert(value T, comparator func(first, second T) Comparat
 		switch status {
 		case NoElementMatchedOrWereBigger:
 			relevantChildNode.maxValue = value
-		case ElementAfterIndexIsBigger:
+		case ElementAtIndexIsBigger:
 			// Do nothing
 		case FoundMatch:
 			// Do nothing
@@ -62,15 +63,19 @@ func (n *innerNode[T]) splitChildNode(nodeToSplit *nodeReference[T], index int) 
 	valuesFromNode := nodeToSplit.node.values
 	halfWayIndex := len(valuesFromNode) / 2
 
-	smallerValues := valuesFromNode[:halfWayIndex]
+	tmpSmallerValues := valuesFromNode[:halfWayIndex]
+	smallerValues := make([]nodeReference[T], len(tmpSmallerValues))
+	copy(smallerValues, tmpSmallerValues)
 	smallerValuesMaxValue := getMaxValue(smallerValues)
-	biggerValues := valuesFromNode[halfWayIndex:]
+	tmpBiggerValues := valuesFromNode[halfWayIndex:]
+	biggerValues := make([]nodeReference[T], len(tmpBiggerValues))
+	copy(biggerValues, tmpBiggerValues)
 	biggerValueMaxValue := getMaxValue(biggerValues)
 
 	nodeToSplit.node.values = biggerValues
 	nodeToSplit.maxValue = biggerValueMaxValue
 
-	biggerNodeReference := nodeReference[T]{
+	smallerNodeReference := nodeReference[T]{
 		maxValue: smallerValuesMaxValue,
 		node: &innerNode[T]{
 			values: smallerValues,
@@ -79,7 +84,7 @@ func (n *innerNode[T]) splitChildNode(nodeToSplit *nodeReference[T], index int) 
 		},
 	}
 
-	n.insertNodeReferenceBeforeIndex(biggerNodeReference, index)
+	n.insertNodeReferenceBeforeIndex(smallerNodeReference, index)
 }
 
 func getMaxValue[T any](biggerValues []nodeReference[T]) T {
@@ -89,9 +94,13 @@ func getMaxValue[T any](biggerValues []nodeReference[T]) T {
 func (n *innerNode[T]) splitWithoutParent() {
 	halfWayIndex := len(n.values) / 2
 
-	smallerValues := n.values[:halfWayIndex]
+	tmpSmallerValues := n.values[:halfWayIndex]
+	smallerValues := make([]nodeReference[T], len(tmpSmallerValues))
+	copy(smallerValues, tmpSmallerValues)
 	smallerValuesMaxValue := getMaxValue(smallerValues)
-	biggerValues := n.values[halfWayIndex:]
+	tmpBiggerValues := n.values[halfWayIndex:]
+	biggerValues := make([]nodeReference[T], len(tmpBiggerValues))
+	copy(biggerValues, tmpBiggerValues)
 	biggerValueMaxValue := getMaxValue(biggerValues)
 
 	n.values = []nodeReference[T]{
@@ -120,9 +129,11 @@ func (n *innerNode[T]) insertNodeReferenceBeforeIndex(value nodeReference[T], in
 	//n.values = append(n.values, 0)
 	//copy(n.values[index+1:], n.values[index:])
 	//n.values[index] = value
-	smaller := n.values[:index]
-	bigger := n.values[index:]
-	valueSlice := []nodeReference[T]{value}
-	result := append(smaller, append(valueSlice, bigger...)...)
-	n.values = result
+	n.values = slices.Insert(n.values, index, value)
+	//smaller := n.values[:index]
+	//bigger := n.values[index:]
+	//valueSlice := []nodeReference[T]{value}
+	//n.values = append(n.values, nodeReference[T]{})
+	//result := append(smaller, append(valueSlice, bigger...)...)
+	//n.values = result
 }

@@ -25,26 +25,41 @@ type GetIndexStatus int
 const (
 	FoundMatch GetIndexStatus = iota
 	NoElementMatchedOrWereBigger
-	ElementAfterIndexIsBigger
+	ElementAtIndexIsBigger
 	ValueNotComparable
 	NoElementsInList
 )
 
 func (n *innerNode[T]) getIndex(value T, comparator func(first, second T) ComparatorStatus) (int, GetIndexStatus) {
-	if len(n.values) == 0 {
+	if n.values == nil || len(n.values) == 0 {
 		return -1, NoElementsInList
 	}
-	var index int
-	for i, v := range n.values {
-		var comparatorResult = comparator(value, v.maxValue)
-		if comparatorResult == Equal {
-			return i, FoundMatch
-		} else if comparatorResult == SecondArgumentBigger {
-			return i, ElementAfterIndexIsBigger
-		} else if comparatorResult == ArgumentsNotComparable {
+	return Search(len(n.values), func(i int) ComparatorStatus {
+		return comparator(value, n.values[i].maxValue)
+	})
+}
+
+func Search(n int, f func(int) ComparatorStatus) (int, GetIndexStatus) {
+	i, j := 0, n
+	var didFindBigger = false
+	for i < j {
+		h := int(uint(i+j) >> 1) // avoid overflow when computing h
+		status := f(h)
+		if status == ArgumentsNotComparable {
 			return -1, ValueNotComparable
+		} else if status == Equal {
+			return h, FoundMatch
+		} else if status == FirstArgumentBigger {
+			i = h + 1
+		} else {
+			didFindBigger = true
+			j = h
 		}
-		index = i
 	}
-	return index, NoElementMatchedOrWereBigger
+
+	if didFindBigger {
+		return i, ElementAtIndexIsBigger
+	} else {
+		return n - 1, NoElementMatchedOrWereBigger
+	}
 }
