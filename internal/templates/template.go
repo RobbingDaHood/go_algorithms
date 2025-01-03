@@ -2,7 +2,9 @@ package main
 
 import (
 	"fmt"
+	"math"
 	"reflect"
+	"runtime"
 	"sort"
 	"testing"
 )
@@ -52,7 +54,15 @@ var minIntCalculated = -1 << (32<<(^uint(0)>>63) - 1) // Respects if it is a 32 
 // 32 << 0 - 1 is 32
 // -1 << 62 is 64 bit minimum
 // -1 << 32 is 32 bit minimum
-var maxIntCalculated = (1 << (32 << (^uint(0) >> 63))) - 1
+var maxIntCalculated = getMaxIntCalculated()
+
+func getMaxIntCalculated() int {
+	if runtime.GOARCH == "amd64" { // For 64-bit systems
+		return math.MaxInt64
+	} else { // For 32-bit systems
+		return math.MaxInt32
+	}
+}
 
 func checkIfBetterMatch(candidate int, currentBest int, isNegative bool) bool {
 	return (!isNegative && candidate > currentBest) || (isNegative && candidate < currentBest)
