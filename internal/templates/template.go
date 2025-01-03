@@ -75,6 +75,23 @@ func BinarySearchInSortedSlice(slice []int, target int) int {
 	}
 }
 
+func InsertIntoSortedStringSlice(slice []string, value string) []string {
+	index := sort.SearchStrings(slice, value)
+	slice = append(slice, "")            // Make space for the new element
+	copy(slice[index+1:], slice[index:]) // Shift elements to the right
+	slice[index] = value
+	return slice
+}
+
+func BinarySearchInStringSlice(slice []string, target string) int {
+	index := sort.SearchStrings(slice, target)
+	if 0 <= index && index < len(slice) && slice[index] == target {
+		return index
+	} else {
+		return -1
+	}
+}
+
 // Setup debug logs
 var debugLogEnabled = false
 
